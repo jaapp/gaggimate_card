@@ -44,6 +44,7 @@ class GaggiMateCard extends LitElement {
       show_progress: true,
       ...config
     };
+    console.log('GaggiMate Card - Config set:', this.config);
   }
 
   getCardSize() {
@@ -67,23 +68,47 @@ class GaggiMateCard extends LitElement {
     if (!this.hass || !this.config) return;
 
     const deviceId = this._getDeviceId();
-    if (!deviceId) return;
+    console.log('GaggiMate Card - Device ID:', deviceId);
+
+    if (!deviceId) {
+      console.warn('GaggiMate Card - Could not determine device ID from entity:', this.config.entity);
+      return;
+    }
 
     // Get all entities for this device
-    this._currentTemp = this._getEntityState(`sensor.${deviceId}_current_temperature`);
-    this._targetTemp = this._getEntityState(`sensor.${deviceId}_target_temperature`);
-    this._pressure = this._getEntityState(`sensor.${deviceId}_current_pressure`);
-    this._weight = this._getEntityState(`sensor.${deviceId}_current_weight`);
+    const tempEntity = `sensor.${deviceId}_current_temperature`;
+    const targetTempEntity = `sensor.${deviceId}_target_temperature`;
+    const pressureEntity = `sensor.${deviceId}_current_pressure`;
+    const weightEntity = `sensor.${deviceId}_current_weight`;
+    const modeEntity = `sensor.${deviceId}_mode`;
+    const profileEntity = `sensor.${deviceId}_selected_profile`;
+
+    console.log('GaggiMate Card - Looking for entities:', {
+      temp: tempEntity,
+      targetTemp: targetTempEntity,
+      pressure: pressureEntity,
+      weight: weightEntity,
+      mode: modeEntity,
+      profile: profileEntity
+    });
+
+    this._currentTemp = this._getEntityState(tempEntity);
+    this._targetTemp = this._getEntityState(targetTempEntity);
+    this._pressure = this._getEntityState(pressureEntity);
+    this._weight = this._getEntityState(weightEntity);
 
     // Get mode from sensor or select
-    const modeSensor = this.hass.states[`sensor.${deviceId}_mode`];
+    const modeSensor = this.hass.states[modeEntity];
     if (modeSensor) {
       const modeId = modeSensor.attributes?.mode_id;
       this._mode = modeId !== undefined ? modeId : 0;
+      console.log('GaggiMate Card - Mode:', this._mode, 'from', modeSensor);
+    } else {
+      console.warn('GaggiMate Card - Mode sensor not found:', modeEntity);
     }
 
     // Get profile
-    const profileSensor = this.hass.states[`sensor.${deviceId}_selected_profile`];
+    const profileSensor = this.hass.states[profileEntity];
     if (profileSensor) {
       this._profile = profileSensor.state;
     }
@@ -91,6 +116,15 @@ class GaggiMateCard extends LitElement {
     // Check if brewing (you might need to add a brewing sensor to the integration)
     // For now, we'll assume we're not brewing
     this._brewing = false;
+
+    console.log('GaggiMate Card - Updated state:', {
+      currentTemp: this._currentTemp,
+      targetTemp: this._targetTemp,
+      pressure: this._pressure,
+      weight: this._weight,
+      mode: this._mode,
+      profile: this._profile
+    });
   }
 
   _getDeviceId() {
@@ -139,8 +173,19 @@ class GaggiMateCard extends LitElement {
   }
 
   render() {
-    if (!this.config || !this.hass) {
-      return html``;
+    console.log('GaggiMate Card - Rendering...', {
+      hasConfig: !!this.config,
+      hasHass: !!this.hass,
+      currentTemp: this._currentTemp,
+      mode: this._mode
+    });
+
+    if (!this.config) {
+      return html`<ha-card><div class="card-content">No config</div></ha-card>`;
+    }
+
+    if (!this.hass) {
+      return html`<ha-card><div class="card-content">Loading...</div></ha-card>`;
     }
 
     return html`
